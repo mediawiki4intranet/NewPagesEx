@@ -519,7 +519,7 @@ class NewPagesExPager extends ReverseChronologicalPager
 
         // Check namespace index
         $this->mNamespace = $this->opts->getValue('namespace');
-        $this->mNamespace = ($namespace === 'all') ? false : intval($namespace);
+        $this->mNamespace = ($this->mNamespace === 'all') ? false : intval($this->mNamespace);
 
         // Check username
         $username = $this->opts->getValue('username');
