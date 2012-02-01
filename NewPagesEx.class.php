@@ -197,7 +197,7 @@ class SpecialNewPagesEx extends SpecialPage
         // Store query values in hidden fields so that form submission doesn't lose them
         $hidden = array();
         foreach ($this->opts->getUnconsumedValues() as $key => $value)
-            $hidden[] = Xml::hidden($key, $value);
+            $hidden[] = Html::hidden($key, $value);
         $hidden = implode("\n", $hidden);
 
         $tagFilter = ChangeTags::buildTagFilterSelector($tagFilterVal);
@@ -232,7 +232,7 @@ class SpecialNewPagesEx extends SpecialPage
             $form .= '<tr><td class="mw-label">'.$fields[$i].'</td><td class="mw-input">'.$fields[$i+1].'</td></tr>';
 
         $form = Xml::openElement('form', array('action' => $wgScript)) .
-            Xml::hidden('title', $this->getTitle()->getPrefixedDBkey()) .
+            Html::hidden('title', $this->getTitle()->getPrefixedDBkey()) .
             Xml::fieldset(wfMsg('newpages')) .
             "<table id='mw-newpages-table'>$form</table></fieldset>$hidden</form>";
 
