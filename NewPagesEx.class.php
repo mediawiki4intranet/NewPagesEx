@@ -111,11 +111,12 @@ class SpecialNewPagesEx extends SpecialPage
     {
         global $wgLang, $wgOut;
 
+        $this->setup($par);
+
         $this->setHeaders();
         $this->outputHeader();
 
         $this->showNavigation = !$this->including(); // Maybe changed in setup
-        $this->setup($par);
 
         if (!$this->including())
         {
@@ -416,11 +417,18 @@ class SpecialNewPagesEx extends SpecialPage
         $messageMemc->set($timekey, wfTimestamp(TS_MW), $expire);
     }
 
+    public function getDescription()
+    {
+        $category = $this->opts ? $this->opts->getValue('category') : '';
+        if ($category)
+            return wfMsg('newpages-in-category', $category);
+        return wfMsg('newpages');
+    }
+
     protected function feedTitle()
     {
         global $wgContLanguageCode, $wgSitename;
-        $page = SpecialPage::getPage('Newpages');
-        $desc = $page->getDescription();
+        $desc = $this->getDescription();
         return "$wgSitename - $desc [$wgContLanguageCode]";
     }
 
