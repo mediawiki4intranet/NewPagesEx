@@ -26,6 +26,7 @@ class SpecialNewPagesEx extends SpecialPage
 {
     var $opts, $skin, $pager;
     var $showNavigation = false;
+    var $parserOptions;
 
     // Default item format
     static $format = '$date $time $dm$plink ($hist) $dm[$length] $dm$ulink $utlink $comment $ctags';
