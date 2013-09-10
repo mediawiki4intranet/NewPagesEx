@@ -35,7 +35,6 @@ class SpecialNewPagesEx extends SpecialPage
     {
         parent::__construct('NewPages');
         $this->includable(true);
-        wfLoadExtensionMessages('NewPagesEx');
     }
 
     // Parse options
@@ -260,9 +259,11 @@ class SpecialNewPagesEx extends SpecialPage
         global $wgLang, $wgContLang;
 
         $title = Title::makeTitleSafe($result->rc_namespace, $result->rc_title);
-        /* HaloACL/IntraACL support */
-        if (method_exists($title, 'userCanReadEx') && !$title->userCanReadEx())
+        // Page-level access right support
+        if (!$title->userCanRead())
+        {
             return '';
+        }
 
         $dm = $wgContLang->getDirMark();
         $length = wfMsgExt('nbytes', array('parsemag', 'escape'), $wgLang->formatNum($result->length));
@@ -436,10 +437,7 @@ class SpecialNewPagesEx extends SpecialPage
     protected function feedItem($row)
     {
         $title = Title::MakeTitle(intval($row->rc_namespace), $row->rc_title);
-/*patch|2011-05-12|IntraACL|start*/
-        if($title && (!method_exists($title, 'userCanReadEx') ||
-            $title->userCanReadEx()))
-/*patch|2011-05-12|IntraACL|end*/
+        if ($title && $title->userCanRead())
         {
             $date = $row->rc_timestamp;
             $comments = $title->getTalkPage()->getFullURL();
@@ -451,7 +449,9 @@ class SpecialNewPagesEx extends SpecialPage
                 $date,
                 $this->feedItemAuthor($row),
                 $comments);
-        } else {
+        }
+        else
+        {
             return null;
         }
     }
