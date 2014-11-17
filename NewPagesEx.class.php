@@ -379,8 +379,16 @@ class SpecialNewPagesEx extends SpecialPage
     {
         $feed->outHeader();
         if ($pager->getNumRows() > 0)
-            while($row = $pager->mResult->fetchObject())
-                $feed->outItem($this->feedItem($row));
+        {
+            while ($row = $pager->mResult->fetchObject())
+            {
+                $item = $this->feedItem($row);
+                if ($item)
+                {
+                    $feed->outItem($item);
+                }
+            }
+        }
         $feed->outFooter();
     }
 
