@@ -22,7 +22,7 @@
  * implements Special:NewPages
  * @ingroup SpecialPage
  */
-class SpecialNewPagesEx extends SpecialPage
+class SpecialNewPagesEx extends IncludableSpecialPage
 {
     var $opts, $skin, $pager;
     var $showNavigation = false;
@@ -34,7 +34,6 @@ class SpecialNewPagesEx extends SpecialPage
     public function __construct()
     {
         parent::__construct('NewPages');
-        $this->includable(true);
     }
 
     // Parse options
@@ -206,7 +205,7 @@ class SpecialNewPagesEx extends SpecialPage
         // Field array is (label, field, label, field, ...)
         $fields = array();
         $fields[] = Xml::label(wfMsg('namespace'), 'namespace');
-        $fields[] = Xml::namespaceSelector($namespace, 'all');
+        $fields[] = Html::namespaceSelector(array('all' => true, 'selected' => $namespace));
         if ($tagFilter)
             $fields = array_merge($fields, $tagFilter);
         if ($wgEnableNewpagesUserFilter)
@@ -244,7 +243,7 @@ class SpecialNewPagesEx extends SpecialPage
     {
         global $wgOut;
         $wgOut->setSyndicated(true);
-        $wgOut->setFeedAppendQuery(wfArrayToCGI($this->opts->getAllValues()));
+        $wgOut->setFeedAppendQuery(wfArrayToCGI($this->opts->getChangedValues()));
     }
 
     /**
@@ -260,7 +259,7 @@ class SpecialNewPagesEx extends SpecialPage
 
         $title = Title::makeTitleSafe($result->rc_namespace, $result->rc_title);
         // Page-level access right support
-        if (!$title->userCanRead())
+        if (!$title->userCan('read'))
         {
             return '';
         }
@@ -444,8 +443,8 @@ class SpecialNewPagesEx extends SpecialPage
 
     protected function feedItem($row)
     {
-        $title = Title::MakeTitle(intval($row->rc_namespace), $row->rc_title);
-        if ($title && $title->userCanRead())
+        $title = Title::makeTitle(intval($row->rc_namespace), $row->rc_title);
+        if ($title && $title->userCan('read'))
         {
             $date = $row->rc_timestamp;
             $comments = $title->getTalkPage()->getFullURL();
@@ -577,7 +576,7 @@ class NewPagesExPager extends ReverseChronologicalPager
 
         $info = array(
             'tables'    => array('recentchanges', 'page'),
-            'fields'    => 'recentchanges.*, page_len as length, page_latest as rev_id, ts_tags',
+            'fields'    => array('recentchanges.*', 'length' => 'page_len', 'rev_id' => 'page_latest'),
             'conds'     => $conds,
             'options'   => array('USE INDEX' => array('recentchanges' => $rcIndexes)),
             'join_conds' => array(
@@ -592,12 +591,9 @@ class NewPagesExPager extends ReverseChronologicalPager
             $info['conds']['cl_to'] = $this->mCategory->getDBkey();
         }
 
-        // Empty array for fields, it'll be set by us anyway.
-        $fields = array();
-
         // Modify query for change tags
         ChangeTags::modifyDisplayQuery($info['tables'],
-                                        $fields,
+                                        $info['fields'],
                                         $info['conds'],
                                         $info['join_conds'],
                                         $info['options'],
