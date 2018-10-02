@@ -52,6 +52,7 @@ class SpecialNewPagesEx extends IncludableSpecialPage
         $opts->add('namespace', '0');
         $opts->add('username', '');
         $opts->add('category', '');
+        $opts->add('notincategory', '');
         $opts->add('feed', '');
         $opts->add('tagfilter', '');
         $opts->add('format', self::$format);
@@ -81,7 +82,7 @@ class SpecialNewPagesEx extends IncludableSpecialPage
         global $wgLang;
         $bits = preg_match_all(
             '/(shownav|hide(?:liu|patrolled|bots|redirs))|'.
-            '(limit|offset|username|category|namespace|format)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^,]+))/is',
+            '(limit|offset|username|category|notincategory|namespace|format)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^,]+))/is',
             $par, $m, PREG_SET_ORDER);
         foreach ($m as $bit)
         {
@@ -193,7 +194,8 @@ class SpecialNewPagesEx extends IncludableSpecialPage
         $userText = $ut ? $ut->getText() : '';
 
         $category = $this->opts->consumeValue('category');
-
+        $notincategory = $this->opts->consumeValue('notincategory');
+        
         // Store query values in hidden fields so that form submission doesn't lose them
         $hidden = array();
         foreach ($this->opts->getUnconsumedValues() as $key => $value)
@@ -220,6 +222,12 @@ class SpecialNewPagesEx extends IncludableSpecialPage
             if ($category !== "" && !$this->pager->mCategory)
                 $attr['style'] = 'background-color: #ffe0e0';
             $fields[] = Xml::input('category', 30, $category, $attr);
+
+            $fields[] = Xml::label(wfMsg('newpages-notincategory'), 'mw-np-notincategory');
+            $attr = array('id' => 'mw-np-notincategory');
+            if ($notincategory !== "" && !$this->pager->mNotInCategory)
+                $attr['style'] = 'background-color: #ffe0e0';
+            $fields[] = Xml::input('notincategory', 30, $notincategory, $attr);
         }
         $fields[] = '';
         $fields[] = Xml::submitButton(wfMsg('allpagessubmit'));
@@ -507,7 +515,7 @@ class NewPagesExPager extends ReverseChronologicalPager
     // Cached query info and title
     var $mQueryInfo, $mTitle;
     // Checked category, namespace, user objects
-    var $mCategory, $mNamespace, $mUser;
+    var $mCategory, $mNotInCategory, $mNamespace, $mUser;
 
     function __construct($form, FormOptions $opts)
     {
@@ -548,6 +556,15 @@ class NewPagesExPager extends ReverseChronologicalPager
         $this->mCategory = $categoryTitle && $categoryTitle->exists() &&
             $categoryTitle->getNamespace() == NS_CATEGORY ? $categoryTitle : NULL;
 
+
+        $notincategory = $this->opts->getValue('notincategory');
+        $notincategoryTitle = $notincategory ? Title::newFromText($notincategory, NS_CATEGORY) : NULL;
+        $this->mCategory = $categoryTitle && $categoryTitle->exists() &&
+            $categoryTitle->getNamespace() == NS_CATEGORY ? $categoryTitle : NULL;
+
+        $this->mNotInCategory = $notincategoryTitle && $notincategoryTitle->exists() &&
+            $notincategoryTitle->getNamespace() == NS_CATEGORY ? $notincategoryTitle : NULL;
+            
         if ($this->mNamespace !== false)
         {
             $conds['rc_namespace'] = $this->mNamespace;
@@ -584,11 +601,21 @@ class NewPagesExPager extends ReverseChronologicalPager
             ),
         );
 
+        $dbr = wfGetDB(DB_SLAVE);
+
         if ($this->mCategory !== NULL)
         {
             $info['tables'][] = 'categorylinks';
-            $info['join_conds']['categorylinks'] = array('INNER JOIN', 'cl_from = page_id');
-            $info['conds']['cl_to'] = $this->mCategory->getDBkey();
+            $info['join_conds']['categorylinks'] = array('INNER JOIN', 'categorylinks.cl_from = page_id');
+            //$info['conds']['cl_to'] = $this->mCategory->getDBkey();
+            $info['conds'][] = "categorylinks.cl_to = " . $dbr->addQuotes($this->mCategory->getDBkey());
+        }
+
+        if ($this->mNotInCategory !== NULL)
+        {
+            $info['tables']['cl2'] = 'categorylinks';
+            $info['join_conds']['cl2'] = array('LEFT JOIN', 'cl2.cl_from = page_id AND cl2.cl_to = ' . $dbr->addQuotes($this->mNotInCategory->getDBkey()) );
+            $info['conds'][] = "cl2.cl_to IS NULL";
         }
 
         // Modify query for change tags
